@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import "./App.css";
 
-const API_URL = "https://todo-fullstack-jimd.onrender.com";
+const API_URL = "https://todo-fullstack-jimd.onrender.com/api/todos";
 
 // ── SVG Icons (inline, no dependency) ──────────────────────────────────────
 const Icons = {
