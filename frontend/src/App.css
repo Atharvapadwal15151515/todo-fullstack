@@ -26,6 +26,9 @@
   --coral: #ef5f53;
   --coral-tint: #fdebe9;
 
+  --skeleton-a: var(--mist-deep);
+  --skeleton-b: #f5f7fa;
+
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
@@ -34,6 +37,103 @@
   --radius-lg: 26px;
   --shadow-soft: 0 18px 40px -20px rgba(28, 36, 51, 0.25);
   --shadow-card: 0 1px 0 rgba(28, 36, 51, 0.04), 0 12px 24px -16px rgba(28, 36, 51, 0.12);
+
+  color-scheme: light;
+}
+
+/* ----------------------------------------------------------------------------
+   DARK MODE
+   Activated either by the system preference (prefers-color-scheme) or by
+   explicitly setting data-theme="dark" on <html>/<body> (e.g. via a toggle
+   button that writes to localStorage). The explicit attribute always wins.
+   ---------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mist: #11151c;
+    --mist-deep: #161c25;
+    --surface: #1b212c;
+    --ink: #eef2f8;
+    --ink-soft: #aab6c6;
+    --ink-faint: #707d8e;
+    --border: #2a3240;
+
+    --current: #5b8ff5;
+    --current-dark: #84a9f7;
+    --current-tint: #1d2a42;
+
+    --tide: #1fd6c1;
+    --tide-dark: #59e6d4;
+    --tide-tint: #122e2c;
+
+    --coral: #ff7a6e;
+    --coral-tint: #3a1f1e;
+
+    --skeleton-a: #1f2531;
+    --skeleton-b: #262e3c;
+
+    --shadow-soft: 0 18px 40px -20px rgba(0, 0, 0, 0.6);
+    --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.2), 0 12px 24px -16px rgba(0, 0, 0, 0.5);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --mist: #11151c;
+  --mist-deep: #161c25;
+  --surface: #1b212c;
+  --ink: #eef2f8;
+  --ink-soft: #aab6c6;
+  --ink-faint: #707d8e;
+  --border: #2a3240;
+
+  --current: #5b8ff5;
+  --current-dark: #84a9f7;
+  --current-tint: #1d2a42;
+
+  --tide: #1fd6c1;
+  --tide-dark: #59e6d4;
+  --tide-tint: #122e2c;
+
+  --coral: #ff7a6e;
+  --coral-tint: #3a1f1e;
+
+  --skeleton-a: #1f2531;
+  --skeleton-b: #262e3c;
+
+  --shadow-soft: 0 18px 40px -20px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.2), 0 12px 24px -16px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --mist: #f5f8fb;
+  --mist-deep: #eaf0f7;
+  --surface: #ffffff;
+  --ink: #1c2433;
+  --ink-soft: #5b6878;
+  --ink-faint: #93a1b2;
+  --border: #e1e8f0;
+
+  --current: #2f6feb;
+  --current-dark: #1f50b8;
+  --current-tint: #e8f0fe;
+
+  --tide: #0fb8a6;
+  --tide-dark: #0a8f81;
+  --tide-tint: #e3f8f5;
+
+  --coral: #ef5f53;
+  --coral-tint: #fdebe9;
+
+  --skeleton-a: var(--mist-deep);
+  --skeleton-b: #f5f7fa;
+
+  --shadow-soft: 0 18px 40px -20px rgba(28, 36, 51, 0.25);
+  --shadow-card: 0 1px 0 rgba(28, 36, 51, 0.04), 0 12px 24px -16px rgba(28, 36, 51, 0.12);
+
+  color-scheme: light;
 }
 
 * {
@@ -46,12 +146,18 @@ body,
   height: 100%;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: var(--mist);
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 button {
@@ -78,6 +184,31 @@ input {
   width: 34px;
   height: 34px;
   color: var(--ink-faint);
+}
+
+/* ---- theme toggle button (optional element, styled if present) ---- */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-soft);
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  border-color: var(--current);
+  color: var(--current);
+}
+
+.theme-toggle:active {
+  transform: scale(0.94);
 }
 
 /* ============================================================================
@@ -253,9 +384,11 @@ input {
   background: var(--surface);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
+  min-height: 44px;
   font-size: 15px;
   color: var(--ink);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
+  width: 100%;
 }
 
 .field input:focus-visible {
@@ -274,6 +407,7 @@ input {
   border: none;
   border-radius: var(--radius-sm);
   padding: 13px 18px;
+  min-height: 44px;
   font-size: 15px;
   font-weight: 600;
   display: flex;
@@ -309,7 +443,8 @@ input {
   color: var(--current);
   font-weight: 600;
   font-size: 14px;
-  padding: 0;
+  padding: 8px 0;
+  min-height: 44px;
 }
 
 .field-error {
@@ -319,6 +454,7 @@ input {
   background: var(--coral-tint);
   padding: 9px 12px;
   border-radius: var(--radius-sm);
+  word-break: break-word;
 }
 
 .banner {
@@ -330,11 +466,22 @@ input {
   border-radius: var(--radius-sm);
   margin-bottom: 16px;
   line-height: 1.45;
+  word-break: break-word;
 }
 
 .banner-error {
   background: var(--coral-tint);
   color: #b5392d;
+}
+
+:root[data-theme="dark"] .banner-error {
+  color: #ff9a8f;
+}
+
+@media (prefers-color-scheme: dark) {
+  .banner-error {
+    color: #ff9a8f;
+  }
 }
 
 .banner-success {
@@ -353,9 +500,11 @@ input {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 18px 36px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  flex-wrap: nowrap;
 }
 
 .dash-brand {
@@ -366,21 +515,25 @@ input {
   font-weight: 600;
   font-size: 19px;
   color: var(--ink);
+  min-width: 0;
 }
 
 .dash-brand .flow-mark {
   color: var(--current);
+  flex-shrink: 0;
 }
 
 .dash-user {
   display: flex;
   align-items: center;
   gap: 18px;
+  flex-shrink: 0;
 }
 
 .dash-greeting {
   font-size: 14.5px;
   color: var(--ink-soft);
+  white-space: nowrap;
 }
 
 .dash-greeting strong {
@@ -395,10 +548,12 @@ input {
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 8px 14px;
+  min-height: 44px;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--ink-soft);
   transition: border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-ghost:hover {
@@ -515,10 +670,12 @@ input {
 
 .add-row input {
   flex: 1;
+  min-width: 0;
   border: 1.5px solid var(--border);
   background: var(--surface);
   border-radius: var(--radius-sm);
   padding: 13px 16px;
+  min-height: 44px;
   font-size: 15px;
   color: var(--ink);
 }
@@ -531,6 +688,7 @@ input {
 .btn-add {
   white-space: nowrap;
   padding: 0 20px;
+  min-height: 44px;
 }
 
 /* ---- toolbar: search + filters ---- */
@@ -553,11 +711,13 @@ input {
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
+  min-height: 44px;
   color: var(--ink-faint);
 }
 
 .search-field input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   background: none;
@@ -577,11 +737,13 @@ input {
   border: none;
   background: none;
   padding: 7px 14px;
+  min-height: 36px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-soft);
   transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
 }
 
 .pill-active {
@@ -609,6 +771,8 @@ input {
   padding: 13px 14px;
   box-shadow: var(--shadow-card);
   animation: row-in 0.25s ease;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 @keyframes row-in {
@@ -646,9 +810,11 @@ input {
 
 .task-title {
   flex: 1;
+  min-width: 0;
   font-size: 15px;
   color: var(--ink);
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .task-done .task-title {
@@ -662,8 +828,9 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
   border-radius: 8px;
   color: var(--ink-faint);
   transition: background 0.15s ease, color 0.15s ease;
@@ -685,7 +852,7 @@ input {
 }
 
 .skeleton-box {
-  background: linear-gradient(90deg, var(--mist-deep) 25%, #f5f7fa 37%, var(--mist-deep) 63%);
+  background: linear-gradient(90deg, var(--skeleton-a) 25%, var(--skeleton-b) 37%, var(--skeleton-a) 63%);
   background-size: 400% 100%;
   animation: skeleton-shine 1.4s ease infinite;
   border-radius: 7px;
@@ -750,15 +917,22 @@ input {
 
 /* ============================================================================
    RESPONSIVE
+   Breakpoints: mobile ≤600px, tablet ≤900px, desktop >900px.
+   Mobile-first overrides cascade upward (tablet rules apply to mobile too,
+   unless explicitly overridden inside the mobile block below).
    ========================================================================== */
-@media (max-width: 880px) {
+
+/* ---------------------------------------------------------------------
+   TABLET — max-width: 900px
+   --------------------------------------------------------------------- */
+@media (max-width: 900px) {
   .auth-shell {
     grid-template-columns: 1fr;
   }
 
   .auth-hero {
     padding: 40px 28px;
-    min-height: 280px;
+    min-height: 260px;
   }
 
   .hero-wave {
@@ -767,6 +941,19 @@ input {
 
   .auth-hero-points {
     margin-bottom: 0;
+  }
+
+  .auth-panel {
+    padding: 32px 24px;
+  }
+
+  .dash-nav {
+    padding: 16px 24px;
+  }
+
+  .dash-main {
+    max-width: 100%;
+    padding: 28px 20px 70px;
   }
 
   .stats-row {
@@ -778,35 +965,165 @@ input {
   }
 }
 
-@media (max-width: 560px) {
+/* ---------------------------------------------------------------------
+   MOBILE — max-width: 600px
+   --------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  /* ---- Auth: stack vertically, full-width form ---- */
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-hero {
+    padding: 32px 20px;
+    min-height: 0;
+  }
+
+  .auth-hero-title {
+    font-size: clamp(26px, 7vw, 32px);
+    max-width: 100%;
+  }
+
+  .auth-hero-copy {
+    max-width: 100%;
+    font-size: 14.5px;
+  }
+
+  .auth-hero-points {
+    margin-bottom: 4px;
+    font-size: 13.5px;
+  }
+
+  .auth-panel {
+    padding: 28px 16px 40px;
+  }
+
+  .auth-card {
+    max-width: 100%;
+  }
+
+  .auth-card-head h2 {
+    font-size: 24px;
+  }
+
+  /* ---- Header: keep on one line, never overflow, logout always fits ---- */
   .dash-nav {
-    padding: 14px 18px;
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .dash-brand {
+    font-size: 16px;
   }
 
   .dash-greeting {
     display: none;
   }
 
-  .dash-main {
-    padding: 24px 16px 60px;
+  .dash-user {
+    gap: 8px;
   }
 
+  .btn-ghost {
+    padding: 8px 10px;
+  }
+
+  .btn-ghost span {
+    display: none;
+  }
+
+  /* ---- Main content padding ---- */
+  .dash-main {
+    padding: 20px 14px 60px;
+  }
+
+  /* ---- Dashboard cards stack on mobile ---- */
+  .stats-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .flow-card {
+    grid-column: 1 / -1;
+    min-height: 88px;
+  }
+
+  .flow-card-text {
+    padding: 14px 16px;
+  }
+
+  .flow-pct {
+    font-size: 26px;
+  }
+
+  .stat-mini {
+    padding: 14px 6px;
+  }
+
+  .stat-num {
+    font-size: 21px;
+  }
+
+  /* ---- Add task: input + button stack cleanly ---- */
+  .add-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .add-row input {
+    width: 100%;
+  }
+
+  .btn-add {
+    width: 100%;
+  }
+
+  /* ---- Toolbar: vertical on mobile ---- */
   .toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
+  }
+
+  .search-field {
+    min-width: 0;
+    width: 100%;
   }
 
   .filter-pills {
+    width: 100%;
     justify-content: space-between;
   }
 
   .pill {
     flex: 1;
     text-align: center;
+    padding: 8px 6px;
   }
 
-  .stats-row {
-    grid-template-columns: 1fr 1fr;
+  /* ---- Task rows: no overflow, text wraps, buttons touch-friendly ---- */
+  .task-row {
+    padding: 12px 12px;
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+
+  .task-title {
+    font-size: 14.5px;
+  }
+
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .empty-state {
+    padding: 44px 16px;
   }
 }
 
