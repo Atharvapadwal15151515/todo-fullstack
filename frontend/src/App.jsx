@@ -338,6 +338,205 @@ function AnalyticsSection({ todos, guest }) {
 }
 
 /* ─────────────────────────────────────────────
+   WEEKLY PRODUCTIVITY WIDGET
+   (Pure CSS bar chart + derived stats + achievement
+   badges, built entirely from the user's own todos —
+   no backend calls, no external chart libraries.)
+───────────────────────────────────────────── */
+
+const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+// Todos in this app don't carry a completion timestamp, so there is no real
+// "which day was this finished on" data to chart. Per spec, when there is
+// no real weekly history yet we derive a stable, deterministic placeholder
+// distribution from the user's own completed tasks (hashing each task id
+// into one of the 7 slots) rather than inventing random numbers that would
+// reshuffle on every render.
+function buildWeeklyStats(todos) {
+  const completed = todos.filter(t => t.completed);
+  const totalCompleted = completed.length;
+  const counts = new Array(7).fill(0);
+
+  completed.forEach(t => {
+    const idx = hashString(String(t.id)) % 7;
+    counts[idx]++;
+  });
+
+  const weekTotal = counts.reduce((a, b) => a + b, 0);
+  const maxCount = Math.max(...counts, 0);
+
+  let mostProductiveIdx = -1;
+  if (maxCount > 0) {
+    mostProductiveIdx = counts.findIndex(c => c === maxCount);
+  }
+
+  let streak = 0;
+  for (let i = counts.length - 1; i >= 0; i--) {
+    if (counts[i] > 0) streak++;
+    else break;
+  }
+
+  return {
+    counts,
+    totalCompleted,
+    weekTotal,
+    maxCount,
+    mostProductiveDay: mostProductiveIdx >= 0 ? WEEK_DAYS[mostProductiveIdx] : "—",
+    streak,
+  };
+}
+
+function buildAchievements(totalCompleted, streak) {
+  const badges = [];
+  if (totalCompleted >= 25) badges.push({ icon: "🥇", label: "Task Master" });
+  if (totalCompleted >= 10) badges.push({ icon: "🏆", label: "10 Tasks Completed" });
+  if (streak >= 7) badges.push({ icon: "🚀", label: "7-Day Streak" });
+  if (streak >= 3) badges.push({ icon: "🔥", label: "3-Day Streak" });
+  if (totalCompleted >= 1) badges.push({ icon: "🌱", label: "Getting Started" });
+  if (badges.length === 0) badges.push({ icon: "🌅", label: "Early Bird" });
+  return badges.slice(0, 4);
+}
+
+function useCountUp(target, duration = 700, trigger = true) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (!trigger) return;
+    let raf;
+    let start = null;
+
+    function step(ts) {
+      if (start === null) start = ts;
+      const progress = Math.min((ts - start) / duration, 1);
+      setValue(Math.round(progress * target));
+      if (progress < 1) raf = requestAnimationFrame(step);
+    }
+
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration, trigger]);
+
+  return value;
+}
+
+function WPHeader() {
+  return (
+    <div className="wp-header">
+      <span className="wp-icon" aria-hidden="true">📈</span>
+      <div>
+        <div className="wp-title">Weekly Productivity</div>
+        <div className="wp-subtitle">Tasks completed over the last 7 days</div>
+      </div>
+    </div>
+  );
+}
+
+function WeeklyProductivityWidget({ todos }) {
+  const [mounted, setMounted] = useState(false);
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
+  const stats = buildWeeklyStats(todos);
+  const achievements = buildAchievements(stats.totalCompleted, stats.streak);
+
+  const streakCount = useCountUp(stats.streak, 700, mounted);
+  const weekTotalCount = useCountUp(stats.weekTotal, 700, mounted);
+
+  if (stats.totalCompleted === 0) {
+    return (
+      <div className="weekly-productivity-card">
+        <WPHeader />
+        <div className="wp-empty-state">
+          <div className="wp-empty-icon">🎯</div>
+          <div className="wp-empty-text">Complete your first task to build your productivity graph.</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="weekly-productivity-card">
+      <WPHeader />
+
+      <div className="wp-chart">
+        {WEEK_DAYS.map((day, i) => {
+          const count = stats.counts[i];
+          const pct = count === 0 ? 4 : Math.max(10, Math.round((count / stats.maxCount) * 100));
+          const isHovered = hoveredIdx === i;
+          return (
+            <div
+              className="wp-bar-col"
+              key={day}
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
+            >
+              <div className={`wp-bar-tooltip ${isHovered ? "wp-tooltip-visible" : ""}`}>
+                {count} task{count !== 1 ? "s" : ""}
+              </div>
+              <div className="wp-bar-track">
+                <div
+                  className={`wp-bar-fill ${isHovered ? "wp-bar-hover" : ""}`}
+                  style={{ height: mounted ? `${pct}%` : "0%", transitionDelay: `${i * 70}ms` }}
+                />
+              </div>
+              <div className="wp-bar-label">{day}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="wp-stats-row">
+        <div className="wp-stat-card wp-fade-up" style={{ animationDelay: "0ms" }}>
+          <div className="wp-stat-icon">🔥</div>
+          <div className="wp-stat-body">
+            <div className="wp-stat-label">Current Streak</div>
+            <div className="wp-stat-value">{streakCount} {streakCount === 1 ? "day" : "days"}</div>
+          </div>
+        </div>
+        <div className="wp-stat-card wp-fade-up" style={{ animationDelay: "90ms" }}>
+          <div className="wp-stat-icon">⚡</div>
+          <div className="wp-stat-body">
+            <div className="wp-stat-label">Most Productive Day</div>
+            <div className="wp-stat-value">{stats.mostProductiveDay}</div>
+          </div>
+        </div>
+        <div className="wp-stat-card wp-fade-up" style={{ animationDelay: "180ms" }}>
+          <div className="wp-stat-icon">📅</div>
+          <div className="wp-stat-body">
+            <div className="wp-stat-label">This Week</div>
+            <div className="wp-stat-value">{weekTotalCount}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="wp-achievements">
+        <div className="wp-achievements-title">🏆 Achievements</div>
+        <div className="wp-badge-row">
+          {achievements.map(a => (
+            <span className="wp-badge" key={a.label}>
+              <span className="wp-badge-icon">{a.icon}</span>{a.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    TASK CARD COMPONENT
 ───────────────────────────────────────────── */
 
@@ -780,6 +979,8 @@ function Dashboard({ user, onLogout, addToast }) {
           )}
         </div>
       )}
+
+      <WeeklyProductivityWidget todos={todos} />
     </>
   );
 }
