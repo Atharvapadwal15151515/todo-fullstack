@@ -12,6 +12,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
+  next();
+});
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -585,6 +589,17 @@ app.delete("/api/todos/:id", authMiddleware, async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
+app.get("/debug-env", (req, res) => {
+  res.json({
+    hasDatabaseUrl: !!process.env.DATABASE_URL,
+    hasJwtSecret: !!process.env.JWT_SECRET,
+    hasEmailUser: !!process.env.EMAIL_USER,
+    hasEmailPass: !!process.env.EMAIL_PASS,
+    emailUser: process.env.EMAIL_USER,
+    frontendUrl: process.env.FRONTEND_URL,
+    nodeEnv: process.env.NODE_ENV,
+  });
+});
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
