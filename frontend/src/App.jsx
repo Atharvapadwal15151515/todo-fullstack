@@ -185,6 +185,12 @@ function hasCustomTheme(theme) {
 // it overrides the theme's own --text variable directly (an inline style has
 // higher priority than the stylesheet rule), and removing the inline style
 // simply lets the current light/dark value show through again.
+//
+// The background gradient is applied at :root, and both the auth pages and
+// the logged-in app shell (`.app-shell` / `.session-restore-overlay`) read
+// --custom-bg-gradient directly in their own `background` rule, so the
+// Dashboard's background updates together with everything else — not just
+// the auth screens.
 function applyCustomThemeVars(theme) {
   const root = document.documentElement;
   const t = theme || {};
@@ -711,10 +717,20 @@ function DeviceStatusCard({ addToast }) {
 /* ─────────────────────────────────────────────
    WORKSPACE THEME CUSTOMIZER
    (Frontend-only. Lives inside the profile menu.
-   Saves { cards, background } gradients to
-   localStorage under "customTheme" and pushes them
-   onto :root as --custom-card-gradient / --custom-bg-gradient.
-   Sits on top of light/dark mode — never replaces it.)
+   Saves { cards, background, text } to localStorage
+   under "customTheme" and pushes them onto :root as
+   --custom-card-gradient / --custom-bg-gradient / --text.
+   Sits on top of light/dark mode — never replaces it.
+
+   Each tab only edits local (draft) state as you pick
+   colors — nothing is saved until you press the single
+   "Confirm changes" button at the bottom, which commits
+   whichever tab(s) you actually touched in this session,
+   all at once. The background gradient you confirm here
+   is read directly by both the auth screens and the
+   logged-in app shell (`.app-shell`), so it updates the
+   Dashboard's background too, not just the background
+   behind the login card.)
 ───────────────────────────────────────────── */
 
 const GRADIENT_DIRECTIONS = ["135deg", "90deg", "180deg", "45deg"];
@@ -733,20 +749,18 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
 
   const [textColor, setTextColor] = useState(initial.text?.color || "#0A0A0A");
 
+  // Tracks which tabs the user actually changed in this session, so
+  // "Confirm changes" only commits the pieces that were touched instead of
+  // silently overwriting an untouched tab with its default draft value.
+  const [cardsDirty, setCardsDirty] = useState(false);
+  const [backgroundDirty, setBackgroundDirty] = useState(false);
+  const [textDirty, setTextDirty] = useState(false);
+
   useEffect(() => {
     function onKey(e) { if (e.key === "Escape") onClose(); }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  function applyCards() {
-    const theme = getCustomTheme();
-    const next = { ...theme, cards: { color1: cardColor1, color2: cardColor2, direction: cardDirection } };
-    saveCustomTheme(next);
-    applyCustomThemeVars(next);
-    onThemeChange();
-    addToast("Card theme applied ✓", "success");
-  }
 
   function resetCards() {
     const theme = getCustomTheme();
@@ -755,16 +769,8 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
     saveCustomTheme(next);
     applyCustomThemeVars(next);
     onThemeChange();
+    setCardsDirty(false);
     addToast("Card theme reset", "info");
-  }
-
-  function applyBackground() {
-    const theme = getCustomTheme();
-    const next = { ...theme, background: { color1: bgColor1, color2: bgColor2, direction: bgDirection } };
-    saveCustomTheme(next);
-    applyCustomThemeVars(next);
-    onThemeChange();
-    addToast("Background theme applied ✓", "success");
   }
 
   function resetBackground() {
@@ -774,16 +780,8 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
     saveCustomTheme(next);
     applyCustomThemeVars(next);
     onThemeChange();
+    setBackgroundDirty(false);
     addToast("Background theme reset", "info");
-  }
-
-  function applyText() {
-    const theme = getCustomTheme();
-    const next = { ...theme, text: { color: textColor } };
-    saveCustomTheme(next);
-    applyCustomThemeVars(next);
-    onThemeChange();
-    addToast("Text color applied ✓", "success");
   }
 
   function resetText() {
@@ -793,6 +791,7 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
     saveCustomTheme(next);
     applyCustomThemeVars(next);
     onThemeChange();
+    setTextDirty(false);
     addToast("Text color reset", "info");
   }
 
@@ -800,9 +799,32 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
     localStorage.removeItem(CUSTOM_THEME_KEY);
     applyCustomThemeVars({});
     onThemeChange();
+    setCardsDirty(false);
+    setBackgroundDirty(false);
+    setTextDirty(false);
     addToast("Workspace theme reset to default", "info");
     onClose();
   }
+
+  // The single confirm action — commits every tab the user touched (cards,
+  // background, and/or text) together in one save + one apply, instead of
+  // each tab needing its own "Apply" button.
+  function confirmAll() {
+    const current = getCustomTheme();
+    const next = { ...current };
+
+    if (cardsDirty) next.cards = { color1: cardColor1, color2: cardColor2, direction: cardDirection };
+    if (backgroundDirty) next.background = { color1: bgColor1, color2: bgColor2, direction: bgDirection };
+    if (textDirty) next.text = { color: textColor };
+
+    saveCustomTheme(next);
+    applyCustomThemeVars(next);
+    onThemeChange();
+    addToast("Workspace theme updated ✓", "success");
+    onClose();
+  }
+
+  const hasPendingChanges = cardsDirty || backgroundDirty || textDirty;
 
   // Rendered into document.body via a portal so the fixed overlay is always
   // centered on the viewport — the header uses backdrop-filter, which (like
@@ -814,7 +836,7 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
         <div className="modal-header">
           <div>
             <div className="modal-title">Customize your workspace</div>
-            <div className="theme-modal-subtitle">Choose custom colors for your background, cards, and text.</div>
+            <div className="theme-modal-subtitle">Choose custom colors for your background, cards, and text, then confirm to apply everything at once.</div>
           </div>
           <button className="modal-close" onClick={onClose} title="Close" aria-label="Close">✕</button>
         </div>
@@ -837,15 +859,15 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
               <div className="theme-color-row">
                 <label className="theme-color-field">
                   <span>Color 1</span>
-                  <input type="color" value={cardColor1} onChange={e => setCardColor1(e.target.value)} />
+                  <input type="color" value={cardColor1} onChange={e => { setCardColor1(e.target.value); setCardsDirty(true); }} />
                 </label>
                 <label className="theme-color-field">
                   <span>Color 2</span>
-                  <input type="color" value={cardColor2} onChange={e => setCardColor2(e.target.value)} />
+                  <input type="color" value={cardColor2} onChange={e => { setCardColor2(e.target.value); setCardsDirty(true); }} />
                 </label>
                 <label className="theme-color-field">
                   <span>Direction</span>
-                  <select className="task-select" value={cardDirection} onChange={e => setCardDirection(e.target.value)}>
+                  <select className="task-select" value={cardDirection} onChange={e => { setCardDirection(e.target.value); setCardsDirty(true); }}>
                     {GRADIENT_DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </label>
@@ -859,7 +881,6 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
               </div>
 
               <div className="theme-modal-actions">
-                <button type="button" className="btn btn-primary btn-sm" onClick={applyCards}>Apply</button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={resetCards}>Reset Cards</button>
               </div>
             </div>
@@ -870,15 +891,15 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
               <div className="theme-color-row">
                 <label className="theme-color-field">
                   <span>Color 1</span>
-                  <input type="color" value={bgColor1} onChange={e => setBgColor1(e.target.value)} />
+                  <input type="color" value={bgColor1} onChange={e => { setBgColor1(e.target.value); setBackgroundDirty(true); }} />
                 </label>
                 <label className="theme-color-field">
                   <span>Color 2</span>
-                  <input type="color" value={bgColor2} onChange={e => setBgColor2(e.target.value)} />
+                  <input type="color" value={bgColor2} onChange={e => { setBgColor2(e.target.value); setBackgroundDirty(true); }} />
                 </label>
                 <label className="theme-color-field">
                   <span>Direction</span>
-                  <select className="task-select" value={bgDirection} onChange={e => setBgDirection(e.target.value)}>
+                  <select className="task-select" value={bgDirection} onChange={e => { setBgDirection(e.target.value); setBackgroundDirty(true); }}>
                     {GRADIENT_DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </label>
@@ -888,9 +909,9 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
                 className="theme-preview-bg"
                 style={{ background: `linear-gradient(${bgDirection}, ${bgColor1}, ${bgColor2})` }}
               />
+              <p className="theme-modal-hint">This also sets the background behind your Dashboard, not just the login screen.</p>
 
               <div className="theme-modal-actions">
-                <button type="button" className="btn btn-primary btn-sm" onClick={applyBackground}>Apply</button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={resetBackground}>Reset Background</button>
               </div>
             </div>
@@ -901,7 +922,7 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
               <div className="theme-color-row">
                 <label className="theme-color-field">
                   <span>Text Color</span>
-                  <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} />
+                  <input type="color" value={textColor} onChange={e => { setTextColor(e.target.value); setTextDirty(true); }} />
                 </label>
               </div>
 
@@ -915,7 +936,6 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
               <p className="theme-modal-hint">Pick a color with enough contrast against your background so text stays easy to read.</p>
 
               <div className="theme-modal-actions">
-                <button type="button" className="btn btn-primary btn-sm" onClick={applyText}>Apply</button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={resetText}>Reset Text</button>
               </div>
             </div>
@@ -924,6 +944,9 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
 
         <div className="theme-modal-footer">
           <button type="button" className="btn btn-danger-ghost btn-sm" onClick={resetAll}>Reset All</button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={confirmAll} disabled={!hasPendingChanges}>
+            Confirm changes
+          </button>
         </div>
       </div>
     </div>,

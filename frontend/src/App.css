@@ -537,6 +537,11 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   min-height: 100vh;
   display: flex;
   animation: pageFadeIn var(--page-fade);
+  background:
+    var(--custom-bg-gradient, none),
+    radial-gradient(1200px 550px at 12% -10%, var(--blue-soft), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, var(--primary-soft), transparent 55%),
+    var(--bg);
 }
 
 .sidebar {
@@ -1329,17 +1334,22 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 .theme-modal-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   padding: 14px 24px 20px;
   border-top: 1px solid var(--border);
   margin-top: 6px;
   flex-shrink: 0;
 }
 
+.theme-modal-confirm-hint {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
 @media (max-width: 600px) {
   .theme-modal-tabs { padding: 12px 16px 0; }
   .theme-modal-body { padding: 14px 16px 4px; }
-  .theme-modal-footer { padding: 12px 16px 16px; }
-  .theme-color-row { gap: 10px; }
-  .theme-color-field select { min-width: 100%; }
+  .theme-modal-footer { padding: 12px 16px 16px; flex-wrap: wrap; }
 }
