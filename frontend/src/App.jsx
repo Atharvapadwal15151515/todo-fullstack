@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import "./App.css";
 
 /* ─────────────────────────────────────────────
@@ -174,13 +175,16 @@ function saveCustomTheme(theme) {
 
 function hasCustomTheme(theme) {
   const t = theme || getCustomTheme();
-  return !!(t && (t.cards || t.background));
+  return !!(t && (t.cards || t.background || t.text));
 }
 
-// Pushes the saved gradients onto :root as CSS variables. Every card /
+// Pushes the saved gradients/colors onto :root as CSS variables. Every card /
 // background rule falls back to its original value via var(--x, default),
 // so when nothing is saved yet (or a piece is reset) the app looks exactly
-// as it did before this feature existed.
+// as it did before this feature existed. The text color is the one exception:
+// it overrides the theme's own --text variable directly (an inline style has
+// higher priority than the stylesheet rule), and removing the inline style
+// simply lets the current light/dark value show through again.
 function applyCustomThemeVars(theme) {
   const root = document.documentElement;
   const t = theme || {};
@@ -201,6 +205,12 @@ function applyCustomThemeVars(theme) {
     );
   } else {
     root.style.removeProperty("--custom-bg-gradient");
+  }
+
+  if (t.text && t.text.color) {
+    root.style.setProperty("--text", t.text.color);
+  } else {
+    root.style.removeProperty("--text");
   }
 }
 
@@ -710,7 +720,7 @@ function DeviceStatusCard({ addToast }) {
 const GRADIENT_DIRECTIONS = ["135deg", "90deg", "180deg", "45deg"];
 
 function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
-  const [tab, setTab] = useState("cards"); // "cards" | "background"
+  const [tab, setTab] = useState("cards"); // "cards" | "background" | "text"
   const initial = getCustomTheme();
 
   const [cardColor1, setCardColor1] = useState(initial.cards?.color1 || "#7CA7EB");
@@ -720,6 +730,8 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
   const [bgColor1, setBgColor1] = useState(initial.background?.color1 || "#FFE1D7");
   const [bgColor2, setBgColor2] = useState(initial.background?.color2 || "#84AFFB");
   const [bgDirection, setBgDirection] = useState(initial.background?.direction || "135deg");
+
+  const [textColor, setTextColor] = useState(initial.text?.color || "#0A0A0A");
 
   useEffect(() => {
     function onKey(e) { if (e.key === "Escape") onClose(); }
@@ -765,6 +777,25 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
     addToast("Background theme reset", "info");
   }
 
+  function applyText() {
+    const theme = getCustomTheme();
+    const next = { ...theme, text: { color: textColor } };
+    saveCustomTheme(next);
+    applyCustomThemeVars(next);
+    onThemeChange();
+    addToast("Text color applied ✓", "success");
+  }
+
+  function resetText() {
+    const theme = getCustomTheme();
+    const next = { ...theme };
+    delete next.text;
+    saveCustomTheme(next);
+    applyCustomThemeVars(next);
+    onThemeChange();
+    addToast("Text color reset", "info");
+  }
+
   function resetAll() {
     localStorage.removeItem(CUSTOM_THEME_KEY);
     applyCustomThemeVars({});
@@ -773,13 +804,17 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
     onClose();
   }
 
-  return (
+  // Rendered into document.body via a portal so the fixed overlay is always
+  // centered on the viewport — the header uses backdrop-filter, which (like
+  // transform) makes any fixed-position descendant contained inside it
+  // instead of the full page, which is what caused the mis-aligned popup.
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card theme-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div>
             <div className="modal-title">Customize your workspace</div>
-            <div className="theme-modal-subtitle">Choose custom gradients for your background and cards.</div>
+            <div className="theme-modal-subtitle">Choose custom colors for your background, cards, and text.</div>
           </div>
           <button className="modal-close" onClick={onClose} title="Close" aria-label="Close">✕</button>
         </div>
@@ -791,10 +826,13 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
           <button type="button" className={`theme-modal-tab ${tab === "background" ? "active" : ""}`} onClick={() => setTab("background")}>
             Background
           </button>
+          <button type="button" className={`theme-modal-tab ${tab === "text" ? "active" : ""}`} onClick={() => setTab("text")}>
+            Text
+          </button>
         </div>
 
         <div className="modal-body theme-modal-body">
-          {tab === "cards" ? (
+          {tab === "cards" && (
             <div className="theme-tab-panel">
               <div className="theme-color-row">
                 <label className="theme-color-field">
@@ -825,7 +863,9 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
                 <button type="button" className="btn btn-secondary btn-sm" onClick={resetCards}>Reset Cards</button>
               </div>
             </div>
-          ) : (
+          )}
+
+          {tab === "background" && (
             <div className="theme-tab-panel">
               <div className="theme-color-row">
                 <label className="theme-color-field">
@@ -855,13 +895,39 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
               </div>
             </div>
           )}
+
+          {tab === "text" && (
+            <div className="theme-tab-panel">
+              <div className="theme-color-row">
+                <label className="theme-color-field">
+                  <span>Text Color</span>
+                  <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} />
+                </label>
+              </div>
+
+              <div className="theme-preview-text-box">
+                <span className="theme-preview-text-title" style={{ color: textColor }}>Preview heading</span>
+                <span className="theme-preview-text-body" style={{ color: textColor }}>
+                  This is how your task titles and page text will look.
+                </span>
+              </div>
+
+              <p className="theme-modal-hint">Pick a color with enough contrast against your background so text stays easy to read.</p>
+
+              <div className="theme-modal-actions">
+                <button type="button" className="btn btn-primary btn-sm" onClick={applyText}>Apply</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={resetText}>Reset Text</button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="theme-modal-footer">
           <button type="button" className="btn btn-danger-ghost btn-sm" onClick={resetAll}>Reset All</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
