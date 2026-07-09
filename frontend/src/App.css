@@ -149,6 +149,7 @@ html { font-size: 16px; scroll-behavior: smooth; }
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background:
+    var(--custom-bg-gradient, none),
     radial-gradient(1200px 550px at 12% -10%, var(--blue-soft), transparent 60%),
     radial-gradient(900px 500px at 100% 0%, var(--primary-soft), transparent 55%),
     var(--bg);
@@ -311,7 +312,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .auth-benefit-desc { display: block; font-size: 13px; color: rgba(255,255,255,0.86); margin-top: 2px; line-height: 1.5; }
 
 .auth-card {
-  background: var(--card);
+  background: var(--custom-card-gradient, var(--card));
   padding: 44px 40px;
   display: flex;
   flex-direction: column;
@@ -699,7 +700,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .analytics-section { display: grid; grid-template-columns: 220px 1fr; gap: 20px; margin-bottom: 28px; align-items: start; }
 
 .donut-card {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--custom-card-gradient, var(--card)); border: 1px solid var(--border); border-radius: var(--radius-lg);
   padding: 24px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;
   align-items: center; gap: 16px; transition: var(--transition);
 }
@@ -727,7 +728,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .stat-cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 
 .stat-card {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--custom-card-gradient, var(--card)); border: 1px solid var(--border); border-radius: var(--radius-md);
   padding: 16px 18px; box-shadow: var(--shadow-sm); transition: var(--transition);
   display: flex; align-items: center; gap: 14px;
 }
@@ -753,7 +754,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
    TASK FORM
 ───────────────────────────────────────────── */
 
-.task-form-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 24px; box-shadow: var(--shadow-sm); transition: var(--transition); }
+.task-form-card { background: var(--custom-card-gradient, var(--card)); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 24px; box-shadow: var(--shadow-sm); transition: var(--transition); }
 .task-form-card:hover { box-shadow: var(--shadow-md); }
 .task-form-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
 .task-form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
@@ -807,7 +808,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .task-list { display: flex; flex-direction: column; gap: 8px; }
 
 .task-card {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--custom-card-gradient, var(--card)); border: 1px solid var(--border); border-radius: var(--radius-md);
   padding: 16px 18px; display: flex; align-items: flex-start; gap: 14px; box-shadow: var(--shadow-sm);
   transition: var(--transition); position: relative; overflow: hidden;
 }
@@ -1131,4 +1132,195 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ─────────────────────────────────────────────
+   SESSION RESTORE SCREEN
+   (Shown briefly on page refresh while the token
+   is verified against GET /api/auth/me. Reuses
+   existing tokens only — no new palette.)
+───────────────────────────────────────────── */
+
+.session-restore-overlay {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    var(--custom-bg-gradient, none),
+    radial-gradient(1200px 550px at 12% -10%, var(--blue-soft), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, var(--primary-soft), transparent 55%),
+    var(--bg);
+}
+
+.session-restore-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 40px 46px;
+  background: var(--custom-card-gradient, var(--card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  animation: pageFadeIn var(--page-fade);
+  text-align: center;
+}
+
+.session-restore-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.session-restore-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────
+   WORKSPACE THEME CUSTOMIZER
+   (Profile-menu-only modal that lets the user pick
+   two-color gradients for cards / background. Saved
+   to localStorage under "customTheme" and applied via
+   --custom-card-gradient / --custom-bg-gradient, which
+   every card/background rule falls back away from when
+   unset — so default look is untouched until opted in.)
+───────────────────────────────────────────── */
+
+.custom-theme-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.theme-modal { max-width: 560px; }
+
+.theme-modal-subtitle {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+.theme-modal-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 16px 24px 0;
+  flex-shrink: 0;
+}
+
+.theme-modal-tab {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  transition: var(--transition);
+  height: auto;
+}
+.theme-modal-tab:hover { background: var(--card-hover); color: var(--text); transform: translateY(-1px); }
+.theme-modal-tab.active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 12px var(--glow-soft);
+}
+
+.theme-modal-body { padding: 18px 24px 6px; overflow-y: auto; }
+
+.theme-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: pageFadeIn 0.2s ease;
+}
+
+.theme-color-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+
+.theme-color-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.theme-color-field input[type="color"] {
+  width: 52px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  padding: 2px;
+  background: var(--input-bg);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.theme-color-field input[type="color"]:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+.theme-color-field select { min-width: 112px; }
+
+.theme-preview-card {
+  height: 88px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.35);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.2s ease;
+}
+
+.theme-preview-bg {
+  height: 88px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.2s ease;
+}
+
+.theme-modal-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.theme-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 24px 20px;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .theme-modal-tabs { padding: 12px 16px 0; }
+  .theme-modal-body { padding: 14px 16px 4px; }
+  .theme-modal-footer { padding: 12px 16px 16px; }
+  .theme-color-row { gap: 10px; }
+  .theme-color-field select { min-width: 100%; }
 }

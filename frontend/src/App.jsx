@@ -14,6 +14,7 @@ const USER_KEY        = "user";
 const LAST_USER_KEY   = "lastUser";
 const GUEST_TODOS_KEY = "taskflow_guest_todos";
 const REMEMBER_KEY    = "taskflow_remember_device";
+const CUSTOM_THEME_KEY = "customTheme";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -157,6 +158,50 @@ function getGuestTodos() {
 
 function saveGuestTodos(todos) {
   localStorage.setItem(GUEST_TODOS_KEY, JSON.stringify(todos));
+}
+
+// ── Workspace theme customizer helpers (frontend-only) ──────
+// customTheme = { cards: { color1, color2, direction }, background: { color1, color2, direction } }
+
+function getCustomTheme() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_THEME_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function saveCustomTheme(theme) {
+  localStorage.setItem(CUSTOM_THEME_KEY, JSON.stringify(theme));
+}
+
+function hasCustomTheme(theme) {
+  const t = theme || getCustomTheme();
+  return !!(t && (t.cards || t.background));
+}
+
+// Pushes the saved gradients onto :root as CSS variables. Every card /
+// background rule falls back to its original value via var(--x, default),
+// so when nothing is saved yet (or a piece is reset) the app looks exactly
+// as it did before this feature existed.
+function applyCustomThemeVars(theme) {
+  const root = document.documentElement;
+  const t = theme || {};
+
+  if (t.cards && t.cards.color1 && t.cards.color2) {
+    root.style.setProperty(
+      "--custom-card-gradient",
+      `linear-gradient(${t.cards.direction || "135deg"}, ${t.cards.color1}, ${t.cards.color2})`
+    );
+  } else {
+    root.style.removeProperty("--custom-card-gradient");
+  }
+
+  if (t.background && t.background.color1 && t.background.color2) {
+    root.style.setProperty(
+      "--custom-bg-gradient",
+      `linear-gradient(${t.background.direction || "135deg"}, ${t.background.color1}, ${t.background.color2})`
+    );
+  } else {
+    root.style.removeProperty("--custom-bg-gradient");
+  }
 }
 
 /* ─────────────────────────────────────────────
@@ -649,6 +694,173 @@ function DeviceStatusCard({ addToast }) {
       {on && (
         <button className="btn btn-secondary btn-sm" onClick={turnOff}>Turn off</button>
       )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   WORKSPACE THEME CUSTOMIZER
+   (Frontend-only. Lives inside the profile menu.
+   Saves { cards, background } gradients to
+   localStorage under "customTheme" and pushes them
+   onto :root as --custom-card-gradient / --custom-bg-gradient.
+   Sits on top of light/dark mode — never replaces it.)
+───────────────────────────────────────────── */
+
+const GRADIENT_DIRECTIONS = ["135deg", "90deg", "180deg", "45deg"];
+
+function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
+  const [tab, setTab] = useState("cards"); // "cards" | "background"
+  const initial = getCustomTheme();
+
+  const [cardColor1, setCardColor1] = useState(initial.cards?.color1 || "#7CA7EB");
+  const [cardColor2, setCardColor2] = useState(initial.cards?.color2 || "#0259DD");
+  const [cardDirection, setCardDirection] = useState(initial.cards?.direction || "135deg");
+
+  const [bgColor1, setBgColor1] = useState(initial.background?.color1 || "#FFE1D7");
+  const [bgColor2, setBgColor2] = useState(initial.background?.color2 || "#84AFFB");
+  const [bgDirection, setBgDirection] = useState(initial.background?.direction || "135deg");
+
+  useEffect(() => {
+    function onKey(e) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  function applyCards() {
+    const theme = getCustomTheme();
+    const next = { ...theme, cards: { color1: cardColor1, color2: cardColor2, direction: cardDirection } };
+    saveCustomTheme(next);
+    applyCustomThemeVars(next);
+    onThemeChange();
+    addToast("Card theme applied ✓", "success");
+  }
+
+  function resetCards() {
+    const theme = getCustomTheme();
+    const next = { ...theme };
+    delete next.cards;
+    saveCustomTheme(next);
+    applyCustomThemeVars(next);
+    onThemeChange();
+    addToast("Card theme reset", "info");
+  }
+
+  function applyBackground() {
+    const theme = getCustomTheme();
+    const next = { ...theme, background: { color1: bgColor1, color2: bgColor2, direction: bgDirection } };
+    saveCustomTheme(next);
+    applyCustomThemeVars(next);
+    onThemeChange();
+    addToast("Background theme applied ✓", "success");
+  }
+
+  function resetBackground() {
+    const theme = getCustomTheme();
+    const next = { ...theme };
+    delete next.background;
+    saveCustomTheme(next);
+    applyCustomThemeVars(next);
+    onThemeChange();
+    addToast("Background theme reset", "info");
+  }
+
+  function resetAll() {
+    localStorage.removeItem(CUSTOM_THEME_KEY);
+    applyCustomThemeVars({});
+    onThemeChange();
+    addToast("Workspace theme reset to default", "info");
+    onClose();
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card theme-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <div className="modal-title">Customize your workspace</div>
+            <div className="theme-modal-subtitle">Choose custom gradients for your background and cards.</div>
+          </div>
+          <button className="modal-close" onClick={onClose} title="Close" aria-label="Close">✕</button>
+        </div>
+
+        <div className="theme-modal-tabs">
+          <button type="button" className={`theme-modal-tab ${tab === "cards" ? "active" : ""}`} onClick={() => setTab("cards")}>
+            Cards
+          </button>
+          <button type="button" className={`theme-modal-tab ${tab === "background" ? "active" : ""}`} onClick={() => setTab("background")}>
+            Background
+          </button>
+        </div>
+
+        <div className="modal-body theme-modal-body">
+          {tab === "cards" ? (
+            <div className="theme-tab-panel">
+              <div className="theme-color-row">
+                <label className="theme-color-field">
+                  <span>Color 1</span>
+                  <input type="color" value={cardColor1} onChange={e => setCardColor1(e.target.value)} />
+                </label>
+                <label className="theme-color-field">
+                  <span>Color 2</span>
+                  <input type="color" value={cardColor2} onChange={e => setCardColor2(e.target.value)} />
+                </label>
+                <label className="theme-color-field">
+                  <span>Direction</span>
+                  <select className="task-select" value={cardDirection} onChange={e => setCardDirection(e.target.value)}>
+                    {GRADIENT_DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              <div
+                className="theme-preview-card"
+                style={{ background: `linear-gradient(${cardDirection}, ${cardColor1}, ${cardColor2})` }}
+              >
+                Preview card
+              </div>
+
+              <div className="theme-modal-actions">
+                <button type="button" className="btn btn-primary btn-sm" onClick={applyCards}>Apply</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={resetCards}>Reset Cards</button>
+              </div>
+            </div>
+          ) : (
+            <div className="theme-tab-panel">
+              <div className="theme-color-row">
+                <label className="theme-color-field">
+                  <span>Color 1</span>
+                  <input type="color" value={bgColor1} onChange={e => setBgColor1(e.target.value)} />
+                </label>
+                <label className="theme-color-field">
+                  <span>Color 2</span>
+                  <input type="color" value={bgColor2} onChange={e => setBgColor2(e.target.value)} />
+                </label>
+                <label className="theme-color-field">
+                  <span>Direction</span>
+                  <select className="task-select" value={bgDirection} onChange={e => setBgDirection(e.target.value)}>
+                    {GRADIENT_DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              <div
+                className="theme-preview-bg"
+                style={{ background: `linear-gradient(${bgDirection}, ${bgColor1}, ${bgColor2})` }}
+              />
+
+              <div className="theme-modal-actions">
+                <button type="button" className="btn btn-primary btn-sm" onClick={applyBackground}>Apply</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={resetBackground}>Reset Background</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="theme-modal-footer">
+          <button type="button" className="btn btn-danger-ghost btn-sm" onClick={resetAll}>Reset All</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1866,6 +2078,8 @@ function MobileBottomNav({ onOpenProfile }) {
 function ProfileMenu({ user, theme, toggleTheme, onLogout, addToast, open, onOpenChange }) {
   const guest = isGuestUser(user);
   const ref = useRef(null);
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
+  const [customActive, setCustomActive] = useState(() => hasCustomTheme());
 
   useEffect(() => {
     function onClickOutside(e) {
@@ -1878,44 +2092,69 @@ function ProfileMenu({ user, theme, toggleTheme, onLogout, addToast, open, onOpe
   const initial = (user?.name || user?.username || user?.email || "U")[0].toUpperCase();
   const displayName = user?.name || user?.username || user?.email || "User";
 
+  function openThemeModal() {
+    onOpenChange(false);
+    setThemeModalOpen(true);
+  }
+
   return (
-    <div className="profile-menu" ref={ref}>
-      <button className="profile-trigger" onClick={() => onOpenChange(!open)}>
-        <div className="header-avatar">{initial}</div>
-        <span className="header-username">{displayName}</span>
-        {guest && <span className="guest-badge">Guest</span>}
-      </button>
+    <>
+      <div className="profile-menu" ref={ref}>
+        <button className="profile-trigger" onClick={() => onOpenChange(!open)}>
+          <div className="header-avatar">{initial}</div>
+          <span className="header-username">{displayName}</span>
+          {guest && <span className="guest-badge">Guest</span>}
+        </button>
 
-      {open && (
-        <div className="profile-dropdown">
-          <div className="profile-dropdown-header">
-            <div className="header-avatar profile-dropdown-avatar">{initial}</div>
-            <div className="profile-dropdown-identity">
-              <span className="profile-dropdown-name">{displayName}</span>
-              {!guest && user?.email && <span className="profile-dropdown-email">{user.email}</span>}
-              {guest && <span className="guest-badge">Guest Mode</span>}
+        {open && (
+          <div className="profile-dropdown">
+            <div className="profile-dropdown-header">
+              <div className="header-avatar profile-dropdown-avatar">{initial}</div>
+              <div className="profile-dropdown-identity">
+                <span className="profile-dropdown-name">{displayName}</span>
+                {!guest && user?.email && <span className="profile-dropdown-email">{user.email}</span>}
+                {guest && <span className="guest-badge">Guest Mode</span>}
+              </div>
             </div>
-          </div>
 
-          <div className="profile-dropdown-row">
-            <span>Theme</span>
-            <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-              {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+            <div className="profile-dropdown-row">
+              <span>Theme</span>
+              <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+                {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </button>
+            </div>
+
+            <div className="profile-dropdown-row">
+              <span>
+                Workspace Theme
+                {customActive && <span className="custom-theme-badge">Custom theme active</span>}
+              </span>
+              <button className="theme-toggle" onClick={openThemeModal} title="Customize workspace theme">
+                🎨 Customize
+              </button>
+            </div>
+
+            {!guest && (
+              <div className="profile-dropdown-device">
+                <DeviceStatusCard addToast={addToast} />
+              </div>
+            )}
+
+            <button className="btn btn-secondary btn-full profile-dropdown-logout" onClick={onLogout}>
+              Sign out
             </button>
           </div>
+        )}
+      </div>
 
-          {!guest && (
-            <div className="profile-dropdown-device">
-              <DeviceStatusCard addToast={addToast} />
-            </div>
-          )}
-
-          <button className="btn btn-secondary btn-full profile-dropdown-logout" onClick={onLogout}>
-            Sign out
-          </button>
-        </div>
+      {themeModalOpen && (
+        <ThemeCustomizerModal
+          onClose={() => setThemeModalOpen(false)}
+          addToast={addToast}
+          onThemeChange={() => setCustomActive(hasCustomTheme())}
+        />
       )}
-    </div>
+    </>
   );
 }
 
@@ -1923,21 +2162,19 @@ function ProfileMenu({ user, theme, toggleTheme, onLogout, addToast, open, onOpe
    ROOT APP
 ───────────────────────────────────────────── */
 
-function computeInitialAuthed() {
-  const token = getToken();
-  if (!token) return false;
-
-  const user = getUser();
-  if (isGuestUser(user)) return true; // guest sessions aren't gated by remember-device
-
-  const remember = getRememberDevice();
-  if (isRememberValid(remember)) return true;
-
-  // No valid remember-device record: don't silently keep the session alive.
-  if (remember) clearRememberDevice();
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-  return false;
+// Small polished screen shown only while a saved token is being verified
+// against GET /api/auth/me on page load — reuses existing card/spinner
+// styling so it matches the rest of the app.
+function SessionRestoreScreen() {
+  return (
+    <div className="session-restore-overlay">
+      <div className="session-restore-card">
+        <TaskSyncLogo size="md" />
+        <div className="session-restore-spinner" />
+        <p className="session-restore-text">Restoring your session…</p>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -1946,7 +2183,12 @@ export default function App() {
   // always win over "you happen to already have a token in localStorage."
   const [resetLink, setResetLink] = useState(() => parseResetLink());
 
-  const [authed, setAuthed] = useState(computeInitialAuthed);
+  // authChecking is true only when there's a token to actually verify, so a
+  // fresh visitor with no token never sees a restore flash.
+  const [authChecking, setAuthChecking] = useState(() => !!getToken());
+  const [authed, setAuthed] = useState(false);
+  const [user, setUser] = useState(() => getUser());
+
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -1957,11 +2199,84 @@ export default function App() {
     localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
 
+  // Apply any saved workspace-theme gradients on load, independent of auth
+  // state, so both the auth screens and the dashboard pick them up.
+  useEffect(() => {
+    applyCustomThemeVars(getCustomTheme());
+  }, []);
+
+  // Verifies a saved token against GET /api/auth/me on every load (including
+  // a plain browser refresh) instead of trusting localStorage blindly. Only
+  // clears token/user here on logout-equivalent conditions: an invalid/failed
+  // response, or an expired "remember this device" record.
+  useEffect(() => {
+    if (resetLink) { setAuthChecking(false); return; }
+
+    let cancelled = false;
+
+    async function restoreSession() {
+      const token = getToken();
+      if (!token) {
+        if (!cancelled) setAuthChecking(false);
+        return;
+      }
+
+      const storedUser = getUser();
+
+      // Guest sessions aren't gated by remember-device, same as before.
+      if (!isGuestUser(storedUser)) {
+        const remember = getRememberDevice();
+        if (remember && !isRememberValid(remember)) {
+          clearRememberDevice();
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          if (!cancelled) {
+            setUser(null);
+            setAuthed(false);
+            setAuthChecking(false);
+          }
+          return;
+        }
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Invalid session");
+        const data = await res.json();
+        const nextUser = { ...(data.user || {}) };
+        if (nextUser.role === "guest") nextUser.isGuest = true;
+        localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+        if (!cancelled) {
+          setUser(nextUser);
+          setAuthed(true);
+        }
+      } catch {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        // lastUser is intentionally kept — an invalid session shouldn't
+        // forget "who you are" for the returning-user login screen.
+        if (!cancelled) {
+          setUser(null);
+          setAuthed(false);
+        }
+      } finally {
+        if (!cancelled) setAuthChecking(false);
+      }
+    }
+
+    restoreSession();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function toggleTheme() {
     setTheme(prev => (prev === "dark" ? "light" : "dark"));
   }
 
   function handleAuthed() {
+    setUser(getUser());
     setAuthed(true);
   }
 
@@ -1970,6 +2285,7 @@ export default function App() {
     localStorage.removeItem(USER_KEY);
     // lastUser and rememberDevice are intentionally kept — logging out
     // shouldn't forget "who you are" or "this device is trusted."
+    setUser(null);
     setAuthed(false);
   }
 
@@ -1982,10 +2298,9 @@ export default function App() {
     localStorage.removeItem(USER_KEY);
     window.history.replaceState({}, "", "/");
     setResetLink(null);
+    setUser(null);
     setAuthed(false);
   }
-
-  const user = getUser();
 
   // A reset-password link always takes priority, regardless of whether a
   // session is already logged in.
@@ -1993,6 +2308,15 @@ export default function App() {
     return (
       <>
         <ResetPasswordScreen token={resetLink.token} email={resetLink.email} onNavigate={exitResetFlow} />
+        <ToastContainer toasts={toasts} />
+      </>
+    );
+  }
+
+  if (authChecking) {
+    return (
+      <>
+        <SessionRestoreScreen />
         <ToastContainer toasts={toasts} />
       </>
     );
