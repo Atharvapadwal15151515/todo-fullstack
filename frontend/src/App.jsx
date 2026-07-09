@@ -190,7 +190,10 @@ function hasCustomTheme(theme) {
 // the logged-in app shell (`.app-shell` / `.session-restore-overlay`) read
 // --custom-bg-gradient directly in their own `background` rule, so the
 // Dashboard's background updates together with everything else — not just
-// the auth screens.
+// the auth screens. The sidebar and header (the "frame" around the
+// dashboard) also read --custom-bg-gradient directly, so they now pick up
+// the same custom background instead of staying locked to their default
+// solid color.
 function applyCustomThemeVars(theme) {
   const root = document.documentElement;
   const t = theme || {};
@@ -728,9 +731,9 @@ function DeviceStatusCard({ addToast }) {
    whichever tab(s) you actually touched in this session,
    all at once. The background gradient you confirm here
    is read directly by both the auth screens and the
-   logged-in app shell (`.app-shell`), so it updates the
-   Dashboard's background too, not just the background
-   behind the login card.)
+   logged-in app shell (`.app-shell`, plus the sidebar and
+   header), so it updates the whole Dashboard frame too,
+   not just the background behind the login card.)
 ───────────────────────────────────────────── */
 
 const GRADIENT_DIRECTIONS = ["135deg", "90deg", "180deg", "45deg"];
@@ -909,7 +912,7 @@ function ThemeCustomizerModal({ onClose, addToast, onThemeChange }) {
                 className="theme-preview-bg"
                 style={{ background: `linear-gradient(${bgDirection}, ${bgColor1}, ${bgColor2})` }}
               />
-              <p className="theme-modal-hint">This also sets the background behind your Dashboard, not just the login screen.</p>
+              <p className="theme-modal-hint">This also sets the background behind your Dashboard — including the sidebar and top header — not just the login screen.</p>
 
               <div className="theme-modal-actions">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={resetBackground}>Reset Background</button>
@@ -1182,7 +1185,7 @@ function Dashboard({ user, onLogout, addToast }) {
               <div className="task-form-group" style={{ justifyContent: "flex-end" }}>
                 <label className="task-form-label">&nbsp;</label>
                 <button type="submit" className="btn btn-primary" disabled={adding || !newTitle.trim()}>
-                  {adding ? "Adding…" : "+ Add task"}
+                  {adding ? <span className="btn-spinner" /> : "+ Add task"}
                 </button>
               </div>
             </div>
@@ -1407,7 +1410,7 @@ function WelcomeScreen({ onNavigate, onGuest, guestLoading }) {
           <button className="btn btn-primary btn-full" onClick={() => onNavigate("login")}>Login</button>
           <button className="btn btn-secondary btn-full" onClick={() => onNavigate("signup")}>Create Account</button>
           <button className="btn btn-ghost btn-full" onClick={onGuest} disabled={guestLoading}>
-            {guestLoading ? "Starting…" : "Continue as Guest"}
+            {guestLoading ? <span className="btn-spinner" style={{ borderColor: "rgba(0,0,0,0.25)", borderTopColor: "var(--text-secondary)" }} /> : "Continue as Guest"}
           </button>
         </div>
       </div>
@@ -1520,7 +1523,7 @@ function LoginScreen({ onNavigate, onAuthed, onGuest, guestLoading, addToast }) 
 
             {error && <div className="auth-error">⚠️ {error}</div>}
             <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-              {loading ? "Signing in…" : "Login"}
+              {loading ? <span className="btn-spinner" /> : "Login"}
             </button>
             <button type="button" className="btn btn-ghost btn-full" onClick={notYou}>Not you?</button>
           </form>
@@ -1568,7 +1571,7 @@ function LoginScreen({ onNavigate, onAuthed, onGuest, guestLoading, addToast }) 
             </button>
 
             <button type="button" className="btn btn-secondary btn-full" onClick={onGuest} disabled={guestLoading}>
-              {guestLoading ? "Starting…" : "Continue as Guest"}
+              {guestLoading ? <span className="btn-spinner" style={{ borderColor: "rgba(0,0,0,0.25)", borderTopColor: "var(--text)" }} /> : "Continue as Guest"}
             </button>
           </form>
         </>
@@ -1653,7 +1656,7 @@ function SignupScreen({ onNavigate, onOtpSent, addToast }) {
         {error && <div className="auth-error">⚠️ {error}</div>}
 
         <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-          {loading ? "Creating account…" : "Create Account"}
+          {loading ? <span className="btn-spinner" /> : "Create Account"}
         </button>
       </form>
 
@@ -1760,7 +1763,7 @@ function OtpScreen({ email, onAuthed, onNavigate, addToast }) {
         {error && <div className="auth-error">⚠️ {error}</div>}
 
         <button type="submit" className="btn btn-primary btn-full" disabled={loading || otp.code.length !== 6}>
-          {loading ? "Verifying…" : "Verify"}
+          {loading ? <span className="btn-spinner" /> : "Verify"}
         </button>
       </form>
 
@@ -1883,7 +1886,7 @@ function ForgotPasswordFlow({ onNavigate, addToast }) {
           </div>
           {error && <div className="auth-error">⚠️ {error}</div>}
           <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-            {loading ? "Sending…" : "Send Reset Instructions"}
+            {loading ? <span className="btn-spinner" /> : "Send Reset Instructions"}
           </button>
         </form>
         <div className="auth-switch">
@@ -1944,7 +1947,7 @@ function ForgotPasswordFlow({ onNavigate, addToast }) {
           <OtpBoxes otp={otp} />
           {error && <div className="auth-error">⚠️ {error}</div>}
           <button type="submit" className="btn btn-primary btn-full" disabled={loading || otp.code.length !== 6}>
-            {loading ? "Verifying…" : "Verify Code"}
+            {loading ? <span className="btn-spinner" /> : "Verify Code"}
           </button>
         </form>
         <div className="auth-switch">
@@ -1966,7 +1969,7 @@ function ForgotPasswordFlow({ onNavigate, addToast }) {
           <PasswordField label="Confirm password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
           {error && <div className="auth-error">⚠️ {error}</div>}
           <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-            {loading ? "Resetting…" : "Reset Password"}
+            {loading ? <span className="btn-spinner" /> : "Reset Password"}
           </button>
         </form>
       </AuthShell>
@@ -2048,7 +2051,7 @@ function ResetPasswordScreen({ token, email, onNavigate }) {
           <PasswordField label="Confirm password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
           {error && <div className="auth-error">⚠️ {error}</div>}
           <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-            {loading ? "Resetting…" : "Reset Password"}
+            {loading ? <span className="btn-spinner" /> : "Reset Password"}
           </button>
         </form>
       )}
@@ -2253,14 +2256,16 @@ function ProfileMenu({ user, theme, toggleTheme, onLogout, addToast, open, onOpe
 
 // Small polished screen shown only while a saved token is being verified
 // against GET /api/auth/me on page load — reuses existing card/spinner
-// styling so it matches the rest of the app.
+// styling so it matches the rest of the app. Kept intentionally generic
+// ("Please wait…") rather than naming the mechanism (session/token
+// verification) to the user.
 function SessionRestoreScreen() {
   return (
     <div className="session-restore-overlay">
       <div className="session-restore-card">
         <TaskSyncLogo size="md" />
         <div className="session-restore-spinner" />
-        <p className="session-restore-text">Restoring your session…</p>
+        <p className="session-restore-text">Please wait…</p>
       </div>
     </div>
   );

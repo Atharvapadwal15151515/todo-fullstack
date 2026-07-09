@@ -547,7 +547,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .sidebar {
   width: 240px;
   flex-shrink: 0;
-  background: var(--sidebar);
+  background: var(--custom-bg-gradient, var(--sidebar));
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -596,7 +596,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 ───────────────────────────────────────────── */
 
 .header {
-  background: var(--card); border-bottom: 1px solid var(--border); padding: 0 28px; height: 68px;
+  background: var(--custom-bg-gradient, var(--card)); border-bottom: 1px solid var(--border); padding: 0 28px; height: 68px;
   display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0;
   z-index: 100; gap: 12px; backdrop-filter: blur(8px);
 }
